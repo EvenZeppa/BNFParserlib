@@ -1,6 +1,8 @@
 # Compiler
 CXX = g++
-CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -Iinclude
+# CONSTANTS = -DDEBUG_ACTIVE=0 -DDEBUG_GRAMMAR
+CONSTANTS =
+CXXFLAGS = -Wall -Wextra -Werror -std=c++98 -Iinclude $(CONSTANTS)
 
 # Directories
 SRC_DIR = src
