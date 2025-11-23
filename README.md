@@ -51,7 +51,7 @@ BNFInterpreter/
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/YOUR_USERNAME/BNFParserLib.git
+   git clone https://github.com/EvenZeppa/BNFParserLib.git
    cd BNFParserLib
    ```
 
