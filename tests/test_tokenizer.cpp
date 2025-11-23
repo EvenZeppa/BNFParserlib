@@ -1,104 +1,131 @@
-#include "UnitTest.hpp"
-#include "BNFTokenizer.hpp"
+#include "../include/TestFramework.hpp"
+#include "../include/BNFTokenizer.hpp"
 #include <string>
 
-void test_single_terminal() {
+/**
+ * @brief Test single terminal token parsing.
+ */
+void test_single_terminal(TestRunner& runner) {
     BNFTokenizer tz("'A'");
     Token t = tz.next();
-    ASSERT_EQ(t.type, Token::TOK_TERMINAL);
-    ASSERT_EQ(t.value, "A");
-    ASSERT_EQ(tz.next().type, Token::TOK_END);
+    ASSERT_EQ(runner, t.type, Token::TOK_TERMINAL);
+    ASSERT_EQ(runner, t.value, "A");
+    ASSERT_EQ(runner, tz.next().type, Token::TOK_END);
 }
 
-void test_single_symbol() {
+/**
+ * @brief Test single symbol token parsing.
+ */
+void test_single_symbol(TestRunner& runner) {
     BNFTokenizer tz("<letter>");
     Token t = tz.next();
-    ASSERT_EQ(t.type, Token::TOK_SYMBOL);
-    ASSERT_EQ(t.value, "<letter>");
-    ASSERT_EQ(tz.next().type, Token::TOK_END);
+    ASSERT_EQ(runner, t.type, Token::TOK_SYMBOL);
+    ASSERT_EQ(runner, t.value, "<letter>");
+    ASSERT_EQ(runner, tz.next().type, Token::TOK_END);
 }
 
-void test_word_token() {
+/**
+ * @brief Test word token parsing.
+ */
+void test_word_token(TestRunner& runner) {
     BNFTokenizer tz("WORD");
     Token t = tz.next();
-    ASSERT_EQ(t.type, Token::TOK_WORD);
-    ASSERT_EQ(t.value, "WORD");
-    ASSERT_EQ(tz.next().type, Token::TOK_END);
+    ASSERT_EQ(runner, t.type, Token::TOK_WORD);
+    ASSERT_EQ(runner, t.value, "WORD");
+    ASSERT_EQ(runner, tz.next().type, Token::TOK_END);
 }
 
-void test_pipe_token() {
+/**
+ * @brief Test pipe token parsing.
+ */
+void test_pipe_token(TestRunner& runner) {
     BNFTokenizer tz("|");
     Token t = tz.next();
-    ASSERT_EQ(t.type, Token::TOK_PIPE);
-    ASSERT_EQ(t.value, "|");
+    ASSERT_EQ(runner, t.type, Token::TOK_PIPE);
+    ASSERT_EQ(runner, t.value, "|");
 }
 
-void test_braces_and_brackets() {
+/**
+ * @brief Test braces and brackets token parsing.
+ */
+void test_braces_and_brackets(TestRunner& runner) {
     BNFTokenizer tz("{ } [ ]");
     Token t1 = tz.next();
-    ASSERT_EQ(t1.type, Token::TOK_LBRACE);
+    ASSERT_EQ(runner, t1.type, Token::TOK_LBRACE);
     Token t2 = tz.next();
-    ASSERT_EQ(t2.type, Token::TOK_RBRACE);
+    ASSERT_EQ(runner, t2.type, Token::TOK_RBRACE);
     Token t3 = tz.next();
-    ASSERT_EQ(t3.type, Token::TOK_LBRACKET);
+    ASSERT_EQ(runner, t3.type, Token::TOK_LBRACKET);
     Token t4 = tz.next();
-    ASSERT_EQ(t4.type, Token::TOK_RBRACKET);
-    ASSERT_EQ(tz.next().type, Token::TOK_END);
+    ASSERT_EQ(runner, t4.type, Token::TOK_RBRACKET);
+    ASSERT_EQ(runner, tz.next().type, Token::TOK_END);
 }
 
-void test_complex_expression() {
+/**
+ * @brief Test complex expression token parsing.
+ */
+void test_complex_expression(TestRunner& runner) {
     BNFTokenizer tz("<letter> { <letter> | '0' } [ 'X' ]");
     Token t = tz.next();
-    ASSERT_EQ(t.type, Token::TOK_SYMBOL);
+    ASSERT_EQ(runner, t.type, Token::TOK_SYMBOL);
     t = tz.next();
-    ASSERT_EQ(t.type, Token::TOK_LBRACE);
+    ASSERT_EQ(runner, t.type, Token::TOK_LBRACE);
     t = tz.next();
-    ASSERT_EQ(t.type, Token::TOK_SYMBOL);
+    ASSERT_EQ(runner, t.type, Token::TOK_SYMBOL);
     t = tz.next();
-    ASSERT_EQ(t.type, Token::TOK_PIPE);
+    ASSERT_EQ(runner, t.type, Token::TOK_PIPE);
     t = tz.next();
-    ASSERT_EQ(t.type, Token::TOK_TERMINAL);
+    ASSERT_EQ(runner, t.type, Token::TOK_TERMINAL);
     t = tz.next();
-    ASSERT_EQ(t.type, Token::TOK_RBRACE);
+    ASSERT_EQ(runner, t.type, Token::TOK_RBRACE);
     t = tz.next();
-    ASSERT_EQ(t.type, Token::TOK_LBRACKET);
+    ASSERT_EQ(runner, t.type, Token::TOK_LBRACKET);
     t = tz.next();
-    ASSERT_EQ(t.type, Token::TOK_TERMINAL);
+    ASSERT_EQ(runner, t.type, Token::TOK_TERMINAL);
     t = tz.next();
-    ASSERT_EQ(t.type, Token::TOK_RBRACKET);
-    ASSERT_EQ(tz.next().type, Token::TOK_END);
+    ASSERT_EQ(runner, t.type, Token::TOK_RBRACKET);
+    ASSERT_EQ(runner, tz.next().type, Token::TOK_END);
 }
 
-void test_peek_vs_next() {
+/**
+ * @brief Test peek vs next token functionality.
+ */
+void test_peek_vs_next(TestRunner& runner) {
     BNFTokenizer tz("'A' | 'B'");
     Token t1 = tz.peek();
-    ASSERT_EQ(t1.type, Token::TOK_TERMINAL);
-    ASSERT_EQ(t1.value, "A");
+    ASSERT_EQ(runner, t1.type, Token::TOK_TERMINAL);
+    ASSERT_EQ(runner, t1.value, "A");
 
     Token t2 = tz.next();
-    ASSERT_EQ(t2.type, Token::TOK_TERMINAL);
-    ASSERT_EQ(t2.value, "A");
+    ASSERT_EQ(runner, t2.type, Token::TOK_TERMINAL);
+    ASSERT_EQ(runner, t2.value, "A");
 
     Token t3 = tz.peek();
-    ASSERT_EQ(t3.type, Token::TOK_PIPE);
+    ASSERT_EQ(runner, t3.type, Token::TOK_PIPE);
 
     Token t4 = tz.next();
-    ASSERT_EQ(t4.type, Token::TOK_PIPE);
+    ASSERT_EQ(runner, t4.type, Token::TOK_PIPE);
 
     Token t5 = tz.next();
-    ASSERT_EQ(t5.type, Token::TOK_TERMINAL);
-    ASSERT_EQ(t5.value, "B");
+    ASSERT_EQ(runner, t5.type, Token::TOK_TERMINAL);
+    ASSERT_EQ(runner, t5.value, "B");
 }
 
 int main() {
-    std::cout << "Running test_single_terminal...\n"; test_single_terminal();
-    std::cout << "Running test_single_symbol...\n"; test_single_symbol();
-    std::cout << "Running test_word_token...\n"; test_word_token();
-    std::cout << "Running test_pipe_token...\n"; test_pipe_token();
-    std::cout << "Running test_braces_and_brackets...\n"; test_braces_and_brackets();
-    std::cout << "Running test_complex_expression...\n"; test_complex_expression();
-    std::cout << "Running test_peek_vs_next...\n"; test_peek_vs_next();
-
-    printTestSummary();
-    return failed == 0 ? 0 : 1;
+    TestSuite suite("Tokenizer Test Suite");
+    
+    // Register all test functions
+    suite.addTest("Single Terminal", test_single_terminal);
+    suite.addTest("Single Symbol", test_single_symbol);
+    suite.addTest("Word Token", test_word_token);
+    suite.addTest("Pipe Token", test_pipe_token);
+    suite.addTest("Braces and Brackets", test_braces_and_brackets);
+    suite.addTest("Complex Expression", test_complex_expression);
+    suite.addTest("Peek vs Next", test_peek_vs_next);
+    
+    // Run all tests
+    TestRunner results = suite.run();
+    results.printSummary();
+    
+    return results.allPassed() ? 0 : 1;
 }
