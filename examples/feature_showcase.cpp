@@ -235,6 +235,66 @@ static void phaseFirstSetPruning() {
     std::cout << "Phase 4 complete and testable." << std::endl;
 }
 
+static void runIrcNickScenario() {
+    Grammar g;
+    g.addRule("<letter> ::= 'a' ... 'z' | 'A' ... 'Z'");
+    g.addRule("<digit> ::= '0' ... '9'");
+    g.addRule("<nick-char> ::= <letter> | <digit> | '_' | '-' | '[' | ']' | '\\\\'");
+    g.addRule("<nick> ::= <letter> { <nick-char> }");
+
+    BNFParser parser(g);
+    expectMatch("IRC nick valid", parser, "<nick>", "alice_42", "alice_42");
+    expectFail("IRC nick cannot start with digit", parser, "<nick>", "9lives");
+}
+
+static void runHexLiteralScenario() {
+    Grammar g;
+    g.addRule("<hex-digit> ::= ( '0' ... '9' 'a' ... 'f' 'A' ... 'F' )");
+    g.addRule("<hex-prefix> ::= '0' 'x' | '0' 'X'");
+    g.addRule("<hex-number> ::= <hex-prefix> <hex-digit> { <hex-digit> }");
+
+    BNFParser parser(g);
+    expectMatch("hex literal uppercase", parser, "<hex-number>", "0xDEADBEEF", "0xDEADBEEF");
+    expectMatch("hex literal lowercase", parser, "<hex-number>", "0Xc0ffee", "0Xc0ffee");
+    expectFail("hex literal requires at least one digit", parser, "<hex-number>", "0x");
+}
+
+static void runPrintableWordScenario() {
+    Grammar g;
+    g.addRule("<printable> ::= ( 0x21 ... 0x7E )");
+    g.addRule("<printable-word> ::= <printable> { <printable> }");
+
+    BNFParser parser(g);
+    expectMatch("printable ASCII word", parser, "<printable-word>", "Hello-World_123", "Hello-World_123");
+    expectFail("rejects control characters", parser, "<printable-word>", std::string("hi\n"));
+}
+
+static void runMiniProtocolScenario() {
+    Grammar g;
+    g.addRule("<letter> ::= 'a' ... 'z' | 'A' ... 'Z'");
+    g.addRule("<digit> ::= '0' ... '9'");
+    g.addRule("<nick-char> ::= <letter> | <digit> | '_' | '-' ");
+    g.addRule("<nick> ::= <letter> { <nick-char> }");
+    g.addRule("<space> ::= ' ' { ' ' }");
+    g.addRule("<printable> ::= ( 0x20 ... 0x7E )");
+    g.addRule("<text> ::= <printable> { <printable> }");
+    g.addRule("<message> ::= 'MSG' <space> <nick> <space> ':' <text> '\\r\\n'");
+
+    BNFParser parser(g);
+    expectMatch("mini protocol message", parser, "<message>", "MSG alice :hello there\r\n", "MSG alice :hello there\r\n");
+    expectFail("mini protocol invalid nick", parser, "<message>", "MSG 9bad :oops\r\n");
+}
+
+// Phase 5: complex real-world-like scenarios combining all features
+static void phaseComplexScenarios() {
+    std::cout << "\n=== Phase 5: Complex Scenarios ===" << std::endl;
+    runIrcNickScenario();
+    runHexLiteralScenario();
+    runPrintableWordScenario();
+    runMiniProtocolScenario();
+    std::cout << "Phase 5 complete and testable." << std::endl;
+}
+
 // Phase 2: sequences, repetition, optional elements, and alternation
 static void phaseSequencesAlternation() {
     std::cout << "\n=== Phase 2: Sequences, Repetition, Alternation ===" << std::endl;
@@ -310,6 +370,7 @@ int main() {
     phaseSequencesAlternation();
     phaseArenaAndInterner();
     phaseFirstSetPruning();
+    phaseComplexScenarios();
 
     return 0;
 }
