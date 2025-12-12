@@ -3,6 +3,7 @@
 
 #include "Grammar.hpp"
 #include "AST.hpp"
+#include "ParseContext.hpp"
 #include <string>
 #include <map>
 #include <bitset>
@@ -13,6 +14,8 @@
  * Takes a grammar and input text, then attempts to parse the input according
  * to the grammar rules, producing an AST representing the parsed structure.
  * Uses recursive descent parsing with backtracking for alternatives.
+ * 
+ * Enhanced with unified ParseContext API for comprehensive error reporting.
  */
 class BNFParser {
 public:
@@ -28,7 +31,25 @@ public:
     ~BNFParser();
 
     /**
-     * @brief Parses input text according to the specified grammar rule.
+     * @brief Parses input text using ParseContext (recommended interface).
+     * 
+     * This is the unified parsing interface that provides comprehensive
+     * error information including furthest failure position and expected symbols.
+     * 
+     * @param ruleName Name of the grammar rule to use as starting point
+     * @param input The text to parse
+     * @param ctx ParseContext to fill with results and error information
+     */
+    void parse(const std::string& ruleName,
+               const std::string& input,
+               ParseContext& ctx) const;
+
+    /**
+     * @brief Parses input text according to the specified grammar rule (legacy).
+     * 
+     * Legacy interface for backward compatibility. Consider using the
+     * ParseContext version for better error reporting.
+     * 
      * @param ruleName Name of the grammar rule to use as starting point
      * @param input The text to parse
      * @param consumed Output parameter for the number of characters consumed
@@ -61,12 +82,14 @@ private:
      * @param input The input text
      * @param pos Current position in input (updated during parsing)
      * @param outNode Output parameter for the generated AST node
+     * @param ctx ParseContext for error tracking (optional, can be nullptr)
      * @return true if parsing succeeded, false otherwise
      */
     bool parseExpression(Expression* expr,
                          const std::string& input,
                          size_t& pos,
-                         ASTNode*& outNode) const;
+                         ASTNode*& outNode,
+                         ParseContext* ctx) const;
 
     /**
      * @brief Parses terminal expressions (quoted strings).
@@ -74,12 +97,14 @@ private:
      * @param input The input text
      * @param pos Current position in input (updated during parsing)
      * @param outNode Output parameter for the generated AST node
+     * @param ctx ParseContext for error tracking (optional, can be nullptr)
      * @return true if parsing succeeded, false otherwise
      */
     bool parseTerminal(Expression* expr,
                        const std::string& input,
                        size_t& pos,
-                       ASTNode*& outNode) const;
+                       ASTNode*& outNode,
+                       ParseContext* ctx) const;
 
     /**
      * @brief Parses symbol expressions (non-terminal references).
@@ -87,12 +112,14 @@ private:
      * @param input The input text
      * @param pos Current position in input (updated during parsing)
      * @param outNode Output parameter for the generated AST node
+     * @param ctx ParseContext for error tracking (optional, can be nullptr)
      * @return true if parsing succeeded, false otherwise
      */
     bool parseSymbol(Expression* expr,
                      const std::string& input,
                      size_t& pos,
-                     ASTNode*& outNode) const;
+                     ASTNode*& outNode,
+                     ParseContext* ctx) const;
 
     /**
      * @brief Parses sequence expressions (ordered list of sub-expressions).
@@ -100,12 +127,14 @@ private:
      * @param input The input text
      * @param pos Current position in input (updated during parsing)
      * @param outNode Output parameter for the generated AST node
+     * @param ctx ParseContext for error tracking (optional, can be nullptr)
      * @return true if parsing succeeded, false otherwise
      */
     bool parseSequence(Expression* expr,
                        const std::string& input,
                        size_t& pos,
-                       ASTNode*& outNode) const;
+                       ASTNode*& outNode,
+                       ParseContext* ctx) const;
 
     /**
      * @brief Parses alternative expressions (choice between sub-expressions).
@@ -113,12 +142,14 @@ private:
      * @param input The input text
      * @param pos Current position in input (updated during parsing)
      * @param outNode Output parameter for the generated AST node
+     * @param ctx ParseContext for error tracking (optional, can be nullptr)
      * @return true if parsing succeeded, false otherwise
      */
     bool parseAlternative(Expression* expr,
                           const std::string& input,
                           size_t& pos,
-                          ASTNode*& outNode) const;
+                          ASTNode*& outNode,
+                          ParseContext* ctx) const;
 
     /**
      * @brief Parses optional expressions (zero or one occurrence).
@@ -126,12 +157,14 @@ private:
      * @param input The input text
      * @param pos Current position in input (updated during parsing)
      * @param outNode Output parameter for the generated AST node
+     * @param ctx ParseContext for error tracking (optional, can be nullptr)
      * @return true if parsing succeeded, false otherwise
      */
     bool parseOptional(Expression* expr,
                        const std::string& input,
                        size_t& pos,
-                       ASTNode*& outNode) const;
+                       ASTNode*& outNode,
+                       ParseContext* ctx) const;
 
     /**
      * @brief Parses repetition expressions (zero or more occurrences).
@@ -139,12 +172,14 @@ private:
      * @param input The input text
      * @param pos Current position in input (updated during parsing)
      * @param outNode Output parameter for the generated AST node
+     * @param ctx ParseContext for error tracking (optional, can be nullptr)
      * @return true if parsing succeeded, false otherwise
      */
     bool parseRepeat(Expression* expr,
                      const std::string& input,
                      size_t& pos,
-                     ASTNode*& outNode) const;
+                     ASTNode*& outNode,
+                     ParseContext* ctx) const;
 
     /**
      * @brief Parses character range expressions.
@@ -152,12 +187,14 @@ private:
      * @param input The input text
      * @param pos Current position in input (updated during parsing)
      * @param outNode Output parameter for the generated AST node
+     * @param ctx ParseContext for error tracking (optional, can be nullptr)
      * @return true if parsing succeeded, false otherwise
      */
     bool parseCharRange(Expression* expr,
                         const std::string& input,
                         size_t& pos,
-                        ASTNode*& outNode) const;
+                        ASTNode*& outNode,
+                        ParseContext* ctx) const;
 
     /**
      * @brief Parses character class expressions.
@@ -165,12 +202,14 @@ private:
      * @param input The input text
      * @param pos Current position in input (updated during parsing)
      * @param outNode Output parameter for the generated AST node
+     * @param ctx ParseContext for error tracking (optional, can be nullptr)
      * @return true if parsing succeeded, false otherwise
      */
     bool parseCharClass(Expression* expr,
                         const std::string& input,
                         size_t& pos,
-                        ASTNode*& outNode) const;
+                        ASTNode*& outNode,
+                        ParseContext* ctx) const;
 
     // FIRST-set computation with memoization
     const FirstInfo& computeFirst(Expression* expr) const;

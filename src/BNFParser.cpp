@@ -5,6 +5,20 @@
 #include <cstring>
 #include <sstream>
 
+// Helper function to deep copy an AST node
+static ASTNode* deepCopyAST(const ASTNode* node) {
+    if (!node) return 0;
+    
+    ASTNode* copy = new ASTNode(node->symbol);
+    copy->matched = node->matched;
+    
+    for (size_t i = 0; i < node->children.size(); ++i) {
+        copy->children.push_back(deepCopyAST(node->children[i]));
+    }
+    
+    return copy;
+}
+
 // BNFParser implementation
 BNFParser::BNFParser(const Grammar& g)
     : grammar(g)
@@ -481,6 +495,7 @@ bool BNFParser::parseRepeat(Expression* expr,
     std::vector<ASTNode*> items;
     std::string matchedAccum;
     int iterations = 0;
+    bool hadFailure = false;
     
     while (true) {
         size_t iterSaved = pos;
@@ -494,6 +509,7 @@ bool BNFParser::parseRepeat(Expression* expr,
                 size_t endPos = std::min(iterSaved + 20, input.size());
                 failedText = input.substr(iterSaved, endPos - iterSaved);
                 ctx->failures.push_back(FailedNode(iterSaved, failedText, ctx->expected, "<rep-element>"));
+                hadFailure = true;
             }
             pos = iterSaved;
             break;
@@ -506,25 +522,21 @@ bool BNFParser::parseRepeat(Expression* expr,
         if (it) {
             matchedAccum += it->matched;
             items.push_back(it);
-            
-            // Partial parsing: add each successfully parsed item
-            if (ctx) {
-                // Clone the item for partialNodes (the original goes into the repetition AST)
-                ASTNode* clone = new ASTNode(it->symbol);
-                clone->matched = it->matched;
-                for (size_t c = 0; c < it->children.size(); ++c) {
-                    // Shallow copy for demonstration - in production, might want deep copy
-                    clone->children.push_back(it->children[c]);
-                }
-                ctx->partialNodes.push_back(clone);
-            }
-            
             iterations++;
             DEBUG_MSG("parseRepeat: iteration " << iterations << " matched");
         } else {
             break;
         }
         if (pos >= input.size()) break;
+    }
+
+    // Only populate partialNodes if there was a failure (for true partial parsing)
+    if (ctx && hadFailure) {
+        for (size_t i = 0; i < items.size(); ++i) {
+            // Deep copy each item for partialNodes
+            ASTNode* clone = deepCopyAST(items[i]);
+            ctx->partialNodes.push_back(clone);
+        }
     }
 
     DEBUG_MSG("parseRepeat: completed with " << iterations << " iterations");
