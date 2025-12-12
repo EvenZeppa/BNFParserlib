@@ -11,8 +11,15 @@ A robust C++98 compatible library for parsing Backus-Naur Form (BNF) grammars an
   - Sequences
   - Optional elements (`[ ]`)
   - Repetitions (`{ }`)
+  - Character ranges (`'a' ... 'z'`)
+  - Character classes (inclusive/exclusive)
   
 - **AST Generation**: Generate structured Abstract Syntax Trees from parsed input
+
+- **Partial Parsing**: Extract valid data from partially invalid inputs
+  - Collect successfully parsed sub-elements even when overall parse fails
+  - Detailed error tracking with position and expected symbols
+  - Perfect for user input validation and error recovery
 
 - **Data Extraction**: Powerful utilities to extract and query specific symbols from ASTs with configurable options:
   - Symbol filtering
@@ -167,6 +174,79 @@ std::string firstWord = data.first("<word>");
 std::vector<std::string> allWords = data.all("<word>");
 ```
 
+### Partial Parsing (New in v1.1)
+
+The `ParseContext` API enables partial parsing - extracting valid data from partially invalid inputs and getting detailed error information:
+
+```cpp
+#include "Grammar.hpp"
+#include "BNFParser.hpp"
+#include "ParseContext.hpp"
+
+int main() {
+    // Define grammar for IRC channel list
+    Grammar g;
+    g.addRule("<letter> ::= 'a' ... 'z' | 'A' ... 'Z'");
+    g.addRule("<digit> ::= '0' ... '9'");
+    g.addRule("<chanchar> ::= <letter> | <digit> | '_'");
+    g.addRule("<channel> ::= '#' <letter> { <chanchar> }");
+    g.addRule("<comma> ::= ','");
+    g.addRule("<chanlist> ::= <channel> { <comma> <channel> }");
+    
+    BNFParser parser(g);
+    ParseContext ctx;
+    
+    // Parse input with some invalid channels
+    parser.parse("<chanlist>", "#chan1,invalid,#chan3", ctx);
+    
+    // Check overall success
+    if (ctx.success) {
+        std::cout << "Matched: " << ctx.ast->matched << std::endl;
+    }
+    
+    // Access successfully parsed sub-elements (even if overall parse failed)
+    std::cout << "Valid channels found: " << ctx.partialNodes.size() << std::endl;
+    for (size_t i = 0; i < ctx.partialNodes.size(); ++i) {
+        std::cout << "  - " << ctx.partialNodes[i]->matched << std::endl;
+    }
+    
+    // Access detailed error information
+    std::cout << "Failures found: " << ctx.failures.size() << std::endl;
+    for (size_t i = 0; i < ctx.failures.size(); ++i) {
+        const FailedNode& fail = ctx.failures[i];
+        std::cout << "  At position " << fail.position << ": "
+                  << fail.text << std::endl;
+        std::cout << "  Expected: " << fail.expected << std::endl;
+    }
+    
+    // Clean up
+    if (ctx.ast) delete ctx.ast;
+    for (size_t i = 0; i < ctx.partialNodes.size(); ++i) {
+        delete ctx.partialNodes[i];
+    }
+    
+    return 0;
+}
+```
+
+**ParseContext Fields:**
+- `ast` - The complete AST (if successful), or nullptr
+- `success` - True if parse succeeded completely
+- `consumed` - Number of characters consumed
+- `errorPos` - Position of furthest failure
+- `expected` - Description of what was expected at errorPos
+- `partialNodes` - Successfully parsed sub-elements (populated on partial failures)
+- `failures` - Detailed information about each failed sub-element
+
+**Use Cases:**
+- User input validation with detailed feedback
+- Parsing lists where some entries may be invalid
+- Configuration files with optional/malformed entries
+- Extracting valid data from partially corrupted input
+- Progressive parsing with error recovery
+
+See `examples/example_partial_parse.cpp` for comprehensive demonstrations.
+
 ### Grammar Definition Syntax
 
 The library supports standard BNF notation:
@@ -205,7 +285,25 @@ grammar.addRule("<message> ::= ':' <nick> ' ' <command> ' ' <channel>");
 
 #### `BNFParser`  
 - `BNFParser(const Grammar& g)` - Constructor
-- `parse(const std::string& ruleName, const std::string& input, size_t& consumed)` - Parse input
+- `parse(const std::string& ruleName, const std::string& input, size_t& consumed)` - Legacy parse (backward compatible)
+- `parse(const std::string& ruleName, const std::string& input, ParseContext& ctx)` - Unified parse with full context
+
+#### `ParseContext`
+- `ASTNode* ast` - Root AST node (nullptr on failure)
+- `bool success` - True if parsing succeeded
+- `size_t consumed` - Characters consumed from input
+- `size_t errorPos` - Position of furthest parse failure
+- `std::string expected` - Description of expected input at errorPos
+- `std::vector<ASTNode*> partialNodes` - Successfully parsed sub-elements (on partial failures)
+- `std::vector<FailedNode> failures` - Detailed failure information
+- `void reset()` - Reset context to initial state
+- `void updateError(size_t pos, const std::string& expected)` - Update error tracking
+
+#### `FailedNode`
+- `size_t position` - Position where parsing failed
+- `std::string text` - Text fragment that failed to parse
+- `std::string expected` - What was expected at this position
+- `std::string ruleName` - Rule being parsed when failure occurred
 
 #### `ASTNode`
 - `std::string symbol` - Node symbol name
@@ -247,13 +345,14 @@ ctest -j4
 
 ### Test Coverage
 
-- **163 total tests** across 6 test suites:
+- **172 total tests** across 11 test suites:
   - AST functionality (14 tests)
   - Expression parsing (11 tests) 
   - Grammar rules (41 tests)
   - BNF parsing (35 tests)
   - Tokenization (34 tests)
   - Data extraction (28 tests)
+  - Partial parsing (9 tests)
 
 ### Test Framework Features
 
@@ -266,15 +365,30 @@ ctest -j4
 
 The `examples/` directory contains comprehensive usage examples:
 
-- `data_extractor_usage.cpp` - Advanced data extraction techniques
-- `irc_usage.cpp` - IRC protocol grammar parsing example
+### Core Functionality
+- `example_ranges.cpp` - Character range demonstrations ('a' ... 'z')
+- `example_classes.cpp` - Character classes (inclusive/exclusive)
+- `example_sequences.cpp` - Sequences, repetitions, optional, alternation
+- `example_arena.cpp` - Arena-backed memory allocation
+- `example_interning.cpp` - Expression interning and deduplication
+- `example_first_set.cpp` - FIRST-set lookahead pruning optimization
 
-Build examples:
+### Practical Applications
+- `example_irc_nickname.cpp` - IRC nickname validation
+- `example_hex_literals.cpp` - Hexadecimal literal parsing
+- `example_mini_protocol.cpp` - Mini protocol message parsing
+- `example_partial_parse.cpp` - **Partial parsing with error recovery**
+
+### Error Reporting
+- `example_parse_success.cpp` - Successful parsing demonstrations
+- `example_parse_errors.cpp` - Comprehensive error reporting examples
+
+Build and run examples:
 ```bash
 cd build
 make
-./examples/data_extractor_usage
-./examples/irc_usage
+./examples/example_partial_parse
+./examples/example_parse_errors
 ```
 
 ## Integration
