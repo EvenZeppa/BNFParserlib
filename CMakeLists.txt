@@ -26,9 +26,10 @@ set_target_properties(bnf PROPERTIES
     PUBLIC_HEADER "include/AST.hpp;include/BNFParser.hpp;include/BNFTokenizer.hpp;include/DataExtractor.hpp;include/Debug.hpp;include/Expression.hpp;include/ExtractedData.hpp;include/Grammar.hpp;include/TestFramework.hpp"
 )
 
-# Optional: Build examples if they exist
+# Optional: Build examples if they exist (can be toggled)
+option(BNFPARSER_BUILD_EXAMPLES "Build example executables" ON)
 file(GLOB EXAMPLE_SOURCES "examples/*.cpp")
-if(EXAMPLE_SOURCES)
+if(BNFPARSER_BUILD_EXAMPLES AND EXAMPLE_SOURCES)
     foreach(EXAMPLE_SOURCE ${EXAMPLE_SOURCES})
         get_filename_component(EXAMPLE_NAME ${EXAMPLE_SOURCE} NAME_WE)
         add_executable(${EXAMPLE_NAME} ${EXAMPLE_SOURCE})
@@ -36,6 +37,8 @@ if(EXAMPLE_SOURCES)
         set_target_properties(${EXAMPLE_NAME} PROPERTIES
             RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/examples"
         )
+        # Keep example builds consistent with the library's warning level
+        target_compile_options(${EXAMPLE_NAME} PRIVATE -Wall -Wextra -Werror)
     endforeach()
 endif()
 
