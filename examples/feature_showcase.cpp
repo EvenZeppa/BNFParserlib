@@ -30,6 +30,45 @@ static void expectFail(const std::string& title,
     std::cout << "  [fail as expected] " << title << " (consumed=" << consumed << ")" << std::endl;
 }
 
+// Phase 2: sequences, repetition, optional elements, and alternation
+static void phaseSequencesAlternation() {
+    std::cout << "\n=== Phase 2: Sequences, Repetition, Alternation ===" << std::endl;
+    Grammar g;
+
+    g.addRule("<lower> ::= 'a' ... 'z'");
+    g.addRule("<upper> ::= 'A' ... 'Z'");
+    g.addRule("<letter> ::= <lower> | <upper>");
+    g.addRule("<digit> ::= '0' ... '9'");
+
+    // Repetition and sequencing for identifiers
+    g.addRule("<word> ::= <letter> { <letter> | <digit> }");
+
+    // Optional sign before integers
+    g.addRule("<maybe-sign> ::= [ '+' | '-' ]");
+    g.addRule("<integer> ::= <maybe-sign> <digit> { <digit> }");
+
+    // Alternation inside a character class for hexadecimal digits
+    g.addRule("<hex-digit> ::= ( '0' ... '9' 'a' ... 'f' 'A' ... 'F' )");
+    g.addRule("<hex-number> ::= '0' 'x' <hex-digit> { <hex-digit> }");
+
+    // Alternatives that overlap to demonstrate selection
+    g.addRule("<identifier-or-int> ::= <word> | <integer>");
+    g.addRule("<maybe-hex> ::= <hex-number> | <integer>");
+
+    BNFParser parser(g);
+
+    expectMatch("word with trailing digits", parser, "<word>", "abc123", "abc123");
+    expectMatch("positive integer", parser, "<integer>", "+42", "+42");
+    expectMatch("negative integer", parser, "<integer>", "-7", "-7");
+    expectMatch("hexadecimal number", parser, "<hex-number>", "0x1aF", "0x1aF");
+    expectMatch("identifier chosen over int", parser, "<identifier-or-int>", "alpha1", "alpha1");
+    expectMatch("integer chosen over identifier", parser, "<identifier-or-int>", "123", "123");
+    expectMatch("maybe-hex picks hex", parser, "<maybe-hex>", "0xBEEF", "0xBEEF");
+    expectFail("hex requires prefix", parser, "<hex-number>", "1234");
+
+    std::cout << "Phase 2 complete and testable." << std::endl;
+}
+
 // Phase 1: character ranges and inclusive/exclusive character classes
 static void phaseRangesAndClasses() {
     std::cout << "\n=== Phase 1: Ranges and Classes ===" << std::endl;
@@ -63,6 +102,7 @@ int main() {
     std::cout << "==============================" << std::endl;
 
     phaseRangesAndClasses();
+    phaseSequencesAlternation();
 
     return 0;
 }
