@@ -5,6 +5,7 @@
 #include <vector>
 #include "Expression.hpp"
 #include "BNFTokenizer.hpp"
+#include "Arena.hpp"
 
 /**
  * @brief Represents a single grammar rule.
@@ -60,6 +61,12 @@ public:
 	 */
 	Rule* getRule(const std::string& name) const;
 
+	/**
+	 * @brief Attach an arena to allocate rules/expressions. Optional.
+	 * When set, created nodes should be allocated from the arena.
+	 */
+	void setArena(Arena* a) { arena = a; }
+
 private:
 	/**
 	 * @brief Parses alternatives separated by '|' operators.
@@ -104,5 +111,6 @@ private:
 	unsigned char tokenToChar(const Token& t) const;
 
 	std::vector<Rule*> rules;   ///< Collection of grammar rules
+	Arena* arena;               ///< Optional arena for allocations (nullable)
 };
 #endif
