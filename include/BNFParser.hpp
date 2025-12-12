@@ -4,6 +4,8 @@
 #include "Grammar.hpp"
 #include "AST.hpp"
 #include <string>
+#include <map>
+#include <bitset>
 
 /**
  * @brief Parser for BNF grammars that generates Abstract Syntax Trees.
@@ -37,7 +39,14 @@ public:
 				size_t& consumed) const;
 
 private:
+    struct FirstInfo {
+        std::bitset<256> chars;
+        bool nullable;
+        FirstInfo() : nullable(false) {}
+    };
+
     const Grammar& grammar;  ///< Reference to the grammar rules
+    mutable std::map<Expression*, FirstInfo> firstCache; ///< FIRST-set memo
 
     /**
      * @brief Removes surrounding quotes from a string.
@@ -162,6 +171,12 @@ private:
                         const std::string& input,
                         size_t& pos,
                         ASTNode*& outNode) const;
+
+    // FIRST-set computation with memoization
+    const FirstInfo& computeFirst(Expression* expr) const;
+    void mergeFirst(FirstInfo& dst, const FirstInfo& src) const;
+    void addChar(FirstInfo& fi, unsigned char c) const;
+    std::string terminalFirstString(Expression* expr) const;
 };
 
 #endif

@@ -12,6 +12,102 @@ BNFParser::BNFParser(const Grammar& g)
 
 BNFParser::~BNFParser() {}
 
+void BNFParser::mergeFirst(FirstInfo& dst, const FirstInfo& src) const {
+    dst.chars |= src.chars;
+    dst.nullable = dst.nullable || src.nullable;
+}
+
+void BNFParser::addChar(FirstInfo& fi, unsigned char c) const {
+    fi.chars.set(static_cast<size_t>(c));
+}
+
+std::string BNFParser::terminalFirstString(Expression* expr) const {
+    std::string literal = stripQuotes(expr->value);
+    return literal;
+}
+
+const BNFParser::FirstInfo& BNFParser::computeFirst(Expression* expr) const {
+    std::map<Expression*, FirstInfo>::iterator it = firstCache.find(expr);
+    if (it != firstCache.end()) return it->second;
+
+    FirstInfo fi;
+    switch (expr->type) {
+        case Expression::EXPR_TERMINAL: {
+            std::string lit = terminalFirstString(expr);
+            if (!lit.empty()) {
+                addChar(fi, static_cast<unsigned char>(lit[0]));
+            } else {
+                fi.nullable = true;
+            }
+            break;
+        }
+        case Expression::EXPR_SYMBOL: {
+            Rule* rr = grammar.getRule(expr->value);
+            if (rr && rr->rootExpr) {
+                fi = computeFirst(rr->rootExpr);
+            }
+            break;
+        }
+        case Expression::EXPR_SEQUENCE: {
+            fi.nullable = true;
+            for (size_t i = 0; i < expr->children.size(); ++i) {
+                const FirstInfo& childFirst = computeFirst(expr->children[i]);
+                mergeFirst(fi, childFirst);
+                if (!childFirst.nullable) {
+                    fi.nullable = false;
+                    break;
+                }
+            }
+            break;
+        }
+        case Expression::EXPR_ALTERNATIVE: {
+            for (size_t i = 0; i < expr->children.size(); ++i) {
+                const FirstInfo& childFirst = computeFirst(expr->children[i]);
+                mergeFirst(fi, childFirst);
+            }
+            break;
+        }
+        case Expression::EXPR_OPTIONAL: {
+            fi.nullable = true;
+            if (!expr->children.empty()) {
+                const FirstInfo& childFirst = computeFirst(expr->children[0]);
+                mergeFirst(fi, childFirst);
+            }
+            break;
+        }
+        case Expression::EXPR_REPEAT: {
+            fi.nullable = true;
+            if (!expr->children.empty()) {
+                const FirstInfo& childFirst = computeFirst(expr->children[0]);
+                mergeFirst(fi, childFirst);
+            }
+            break;
+        }
+        case Expression::EXPR_CHAR_RANGE: {
+            unsigned char start = expr->charRange.start;
+            unsigned char end = expr->charRange.end;
+            for (unsigned int c = start; c <= end; ++c) {
+                addChar(fi, static_cast<unsigned char>(c));
+                if (c == 255) break; // avoid overflow
+            }
+            fi.nullable = false;
+            break;
+        }
+        case Expression::EXPR_CHAR_CLASS: {
+            fi.nullable = false;
+            for (size_t i = 0; i < 256; ++i) {
+                if (expr->classMatches(static_cast<unsigned char>(i))) fi.chars.set(i);
+            }
+            break;
+        }
+        default:
+            break;
+    }
+
+    std::pair<std::map<Expression*, FirstInfo>::iterator, bool> inserted = firstCache.insert(std::make_pair(expr, fi));
+    return inserted.first->second;
+}
+
 // Remove surrounding quotes from terminal strings
 std::string BNFParser::stripQuotes(const std::string& s) const{
     if (s.size() >= 2 && ((s[0] == '\'' && s[s.size()-1] == '\'') ||
@@ -204,7 +300,27 @@ bool BNFParser::parseAlternative(Expression* expr,
     size_t bestPos = pos;
     bool anyMatch = false;
 
+    bool hasChar = pos < input.size();
+    unsigned char look = hasChar ? static_cast<unsigned char>(input[pos]) : 0;
+
     for (size_t i = 0; i < expr->children.size(); ++i) {
+        if (hasChar) {
+            const FirstInfo& fi = computeFirst(expr->children[i]);
+            if (!fi.nullable && !fi.chars.test(look)) {
+                DEBUG_MSG("parseAlternative: skipping alt " << i << " due to FIRST mismatch");
+                continue;
+            }
+            if (!fi.nullable && fi.chars.none()) {
+                DEBUG_MSG("parseAlternative: skipping alt " << i << " (empty FIRST and not nullable)");
+                continue;
+            }
+        } else {
+            const FirstInfo& fi = computeFirst(expr->children[i]);
+            if (!fi.nullable) {
+                DEBUG_MSG("parseAlternative: skipping alt " << i << " at EOF due to non-nullable FIRST");
+                continue;
+            }
+        }
         size_t savedPos = pos;
         ASTNode* branchNode = 0;
         bool ok = parseExpression(expr->children[i], input, pos, branchNode);
