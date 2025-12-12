@@ -1,6 +1,6 @@
-#include "BNFParser.hpp"
-#include "Expression.hpp"
-#include "Debug.hpp"
+#include "../include/BNFParser.hpp"
+#include "../include/Expression.hpp"
+#include "../include/Debug.hpp"
 #include <iostream>
 #include <cstring>
 
@@ -356,36 +356,7 @@ bool BNFParser::parseCharClass(Expression* expr,
     }
     
     unsigned char ch = static_cast<unsigned char>(input[pos]);
-    bool found = false;
-    
-    DEBUG_MSG("parseCharClass: checking character " << (int)ch 
-              << ", isExclusion=" << expr->isExclusion);
-    
-    // Check individual characters
-    for (size_t i = 0; i < expr->charList.size(); ++i) {
-        if (ch == expr->charList[i]) {
-            found = true;
-            DEBUG_MSG("parseCharClass: found in charList at index " << i);
-            break;
-        }
-    }
-    
-    // Check ranges
-    if (!found) {
-        for (size_t i = 0; i < expr->rangeList.size(); ++i) {
-            unsigned char start = expr->rangeList[i].start;
-            unsigned char end = expr->rangeList[i].end;
-            if (ch >= start && ch <= end) {
-                found = true;
-                DEBUG_MSG("parseCharClass: found in range [" << (int)start 
-                          << ", " << (int)end << "]");
-                break;
-            }
-        }
-    }
-    
-    // Apply exclusion logic
-    bool match = expr->isExclusion ? !found : found;
+    bool match = expr->classMatches(ch);
     
     if (match) {
         DEBUG_MSG("parseCharClass: matched character " << (int)ch);

@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <bitset>
 
 /**
  * @brief Represents a single character range.
@@ -67,15 +68,15 @@ struct Expression {
     // ===== Character Range/Class specific fields =====
     // For EXPR_CHAR_RANGE: stores the start and end character
     CharRange charRange;
-    
-    // For EXPR_CHAR_CLASS: indicates exclusion mode (^ prefix)
-    bool isExclusion;
-    
-    // For EXPR_CHAR_CLASS: list of individual characters
-    std::vector<unsigned char> charList;
-    
-    // For EXPR_CHAR_CLASS: list of character ranges
-    std::vector<CharRange> rangeList;
+
+    // For EXPR_CHAR_CLASS: 256-bit bitmap representing membership
+    // bitmap[c] == true means the class matches byte value c.
+    std::bitset<256> charBitmap;
+
+    // Convenience inline matcher for character classes
+    inline bool classMatches(unsigned char c) const {
+        return charBitmap.test(static_cast<size_t>(c));
+    }
 
     /**
      * @brief Constructs an Expression of the given type.

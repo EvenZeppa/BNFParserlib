@@ -76,16 +76,19 @@ void test_char_range(TestRunner& runner) {
  */
 void test_inclusive_char_class(TestRunner& runner) {
     Expression* cls = new Expression(Expression::EXPR_CHAR_CLASS);
-    cls->isExclusion = false;
-    cls->rangeList.push_back(CharRange('a', 'z'));
-    cls->rangeList.push_back(CharRange('0', '9'));
-    cls->charList.push_back('_');
+    // Build bitmap for [a-z0-9_]
+    for (unsigned char c = 'a'; c <= 'z'; ++c) cls->charBitmap.set(c);
+    for (unsigned char c = '0'; c <= '9'; ++c) cls->charBitmap.set(c);
+    cls->charBitmap.set('_');
     
     ASSERT_EQ(runner, cls->type, Expression::EXPR_CHAR_CLASS);
-    ASSERT_EQ(runner, cls->isExclusion, false);
-    ASSERT_EQ(runner, cls->rangeList.size(), 2u);
-    ASSERT_EQ(runner, cls->charList.size(), 1u);
-    ASSERT_EQ(runner, static_cast<int>(cls->charList[0]), static_cast<int>('_'));
+    // Validate bitmap contains expected characters
+    ASSERT_EQ(runner, cls->classMatches('a'), true);
+    ASSERT_EQ(runner, cls->classMatches('z'), true);
+    ASSERT_EQ(runner, cls->classMatches('0'), true);
+    ASSERT_EQ(runner, cls->classMatches('9'), true);
+    ASSERT_EQ(runner, cls->classMatches('_'), true);
+    ASSERT_EQ(runner, cls->classMatches('!'), false);
     
     delete cls;
 }
@@ -95,16 +98,19 @@ void test_inclusive_char_class(TestRunner& runner) {
  */
 void test_exclusive_char_class(TestRunner& runner) {
     Expression* cls = new Expression(Expression::EXPR_CHAR_CLASS);
-    cls->isExclusion = true;
-    cls->charList.push_back(' ');
-    cls->charList.push_back(',');
-    cls->charList.push_back(0x0A);
+    // Exclusive class of [^ ,\n]
+    // Start with all bits set to 1, then unset excluded ones
+    cls->charBitmap.set();
+    cls->charBitmap.reset(' ');
+    cls->charBitmap.reset(',');
+    cls->charBitmap.reset(static_cast<unsigned char>(0x0A));
     
     ASSERT_EQ(runner, cls->type, Expression::EXPR_CHAR_CLASS);
-    ASSERT_EQ(runner, cls->isExclusion, true);
-    ASSERT_EQ(runner, cls->charList.size(), 3u);
-    ASSERT_EQ(runner, static_cast<int>(cls->charList[0]), static_cast<int>(' '));
-    ASSERT_EQ(runner, static_cast<int>(cls->charList[2]), 0x0A);
+    // Validate excluded characters are not matched, others are
+    ASSERT_EQ(runner, cls->classMatches(' '), false);
+    ASSERT_EQ(runner, cls->classMatches(','), false);
+    ASSERT_EQ(runner, cls->classMatches(static_cast<unsigned char>(0x0A)), false);
+    ASSERT_EQ(runner, cls->classMatches('A'), true);
     
     delete cls;
 }

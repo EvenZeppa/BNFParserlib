@@ -158,15 +158,13 @@ void test_inclusive_char_class(TestRunner& runner) {
 	
 	Expression* expr = r->rootExpr;
 	ASSERT_EQ(runner, expr->type, Expression::EXPR_CHAR_CLASS);
-	ASSERT_EQ(runner, expr->isExclusion, false);
-	ASSERT_EQ(runner, expr->rangeList.size(), 2); // 'a'..'z' and 'A'..'Z'
-	ASSERT_EQ(runner, expr->charList.size(), 1); // '_'
-	
-	ASSERT_EQ(runner, static_cast<int>(expr->rangeList[0].start), static_cast<int>('a'));
-	ASSERT_EQ(runner, static_cast<int>(expr->rangeList[0].end), static_cast<int>('z'));
-	ASSERT_EQ(runner, static_cast<int>(expr->rangeList[1].start), static_cast<int>('A'));
-	ASSERT_EQ(runner, static_cast<int>(expr->rangeList[1].end), static_cast<int>('Z'));
-	ASSERT_EQ(runner, static_cast<int>(expr->charList[0]), static_cast<int>('_'));
+	// Validate bitmap bits for expected characters
+	ASSERT_EQ(runner, expr->classMatches('a'), true);
+	ASSERT_EQ(runner, expr->classMatches('z'), true);
+	ASSERT_EQ(runner, expr->classMatches('A'), true);
+	ASSERT_EQ(runner, expr->classMatches('Z'), true);
+	ASSERT_EQ(runner, expr->classMatches('_'), true);
+	ASSERT_EQ(runner, expr->classMatches('0'), false);
 }
 
 /**
@@ -182,13 +180,11 @@ void test_exclusive_char_class(TestRunner& runner) {
 	
 	Expression* expr = r->rootExpr;
 	ASSERT_EQ(runner, expr->type, Expression::EXPR_CHAR_CLASS);
-	ASSERT_EQ(runner, expr->isExclusion, true);
-	ASSERT_EQ(runner, expr->rangeList.size(), 0);
-	ASSERT_EQ(runner, expr->charList.size(), 3); // ' ', 0x0A, 0x0D
-	
-	ASSERT_EQ(runner, static_cast<int>(expr->charList[0]), static_cast<int>(' '));
-	ASSERT_EQ(runner, static_cast<int>(expr->charList[1]), 0x0A);
-	ASSERT_EQ(runner, static_cast<int>(expr->charList[2]), 0x0D);
+	// Validate excluded characters are not matched
+	ASSERT_EQ(runner, expr->classMatches(' '), false);
+	ASSERT_EQ(runner, expr->classMatches(static_cast<unsigned char>(0x0A)), false);
+	ASSERT_EQ(runner, expr->classMatches(static_cast<unsigned char>(0x0D)), false);
+	ASSERT_EQ(runner, expr->classMatches('A'), true);
 }
 
 /**
@@ -204,9 +200,14 @@ void test_mixed_char_class(TestRunner& runner) {
 	
 	Expression* expr = r->rootExpr;
 	ASSERT_EQ(runner, expr->type, Expression::EXPR_CHAR_CLASS);
-	ASSERT_EQ(runner, expr->isExclusion, false);
-	ASSERT_EQ(runner, expr->rangeList.size(), 3); // 0-9, a-f, A-F
-	ASSERT_EQ(runner, expr->charList.size(), 0);
+	// Validate ranges are present via bitmap checks
+	ASSERT_EQ(runner, expr->classMatches('0'), true);
+	ASSERT_EQ(runner, expr->classMatches('9'), true);
+	ASSERT_EQ(runner, expr->classMatches('a'), true);
+	ASSERT_EQ(runner, expr->classMatches('f'), true);
+	ASSERT_EQ(runner, expr->classMatches('A'), true);
+	ASSERT_EQ(runner, expr->classMatches('F'), true);
+	ASSERT_EQ(runner, expr->classMatches('g'), false);
 }
 
 int main() {

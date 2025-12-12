@@ -1,5 +1,5 @@
-#include "BNFTokenizer.hpp"
-#include "Debug.hpp"
+#include "../include/BNFTokenizer.hpp"
+#include "../include/Debug.hpp"
 #include <cctype>
 
 // Token implementation

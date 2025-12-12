@@ -1,5 +1,5 @@
-#include "AST.hpp"
-#include "Debug.hpp"
+#include "../include/AST.hpp"
+#include "../include/Debug.hpp"
 
 // ASTNode implementation
 ASTNode::ASTNode(const std::string& s) : symbol(s) {

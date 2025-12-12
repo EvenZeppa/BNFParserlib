@@ -1,5 +1,5 @@
-#include "Grammar.hpp"
-#include "Debug.hpp"
+#include "../include/Grammar.hpp"
+#include "../include/Debug.hpp"
 #include <iostream>
 #include <sstream>
 
@@ -247,13 +247,15 @@ Expression* Grammar::parseFactor(BNFTokenizer& tz) {
 // Format: ( [^] (terminal|hex|range)* )
 Expression* Grammar::parseCharClass(BNFTokenizer& tz) {
     Expression* cls = new Expression(Expression::EXPR_CHAR_CLASS);
-    cls->isExclusion = false;
+    // Build bitmap progressively; default all bits to false
+    cls->charBitmap.reset();
     
     // Check for exclusion marker (^)
     Token t = tz.peek();
+    bool isExclusion = false;
     if (t.type == Token::TOK_CARET) {
         tz.next(); // consume caret
-        cls->isExclusion = true;
+        isExclusion = true;
     }
     
     // Parse character list and ranges until we hit ')'
@@ -288,15 +290,22 @@ Expression* Grammar::parseCharClass(BNFTokenizer& tz) {
                 
                 unsigned char start = tokenToChar(t);
                 unsigned char end = tokenToChar(endToken);
-                cls->rangeList.push_back(CharRange(start, end));
-                
-                DEBUG_MSG("parseCharClass: added range " << (int)start << " ... " << (int)end);
+                if (start <= end) {
+                    for (unsigned int c = start; c <= end; ++c) {
+                        cls->charBitmap.set(c, true);
+                    }
+                } else {
+                    // if reversed, still support by swapping
+                    for (unsigned int c = end; c <= start; ++c) {
+                        cls->charBitmap.set(c, true);
+                    }
+                }
+                DEBUG_MSG("parseCharClass: added range to bitmap " << (int)start << " ... " << (int)end);
             } else {
                 // Single character
                 unsigned char ch = tokenToChar(t);
-                cls->charList.push_back(ch);
-                
-                DEBUG_MSG("parseCharClass: added char " << (int)ch);
+                cls->charBitmap.set(ch, true);
+                DEBUG_MSG("parseCharClass: added char to bitmap " << (int)ch);
             }
         } else {
             std::cerr << "Unexpected token in character class: " << t.value << std::endl;
@@ -304,13 +313,13 @@ Expression* Grammar::parseCharClass(BNFTokenizer& tz) {
             return NULL;
         }
     }
-    
-    std::stringstream ss;
-    ss << "parseCharClass: isExclusion=" << cls->isExclusion 
-       << ", chars=" << cls->charList.size()
-       << ", ranges=" << cls->rangeList.size();
-    DEBUG_MSG(ss.str());
-    
+    // Apply exclusion by inverting bitmap if needed
+    if (isExclusion) {
+        cls->charBitmap.flip();
+        DEBUG_MSG("parseCharClass: applied exclusion (bitmap inverted)");
+    }
+
+    DEBUG_MSG("parseCharClass: bitmap built");
     return cls;
 }
 

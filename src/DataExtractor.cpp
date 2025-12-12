@@ -1,5 +1,5 @@
-#include "DataExtractor.hpp"
-#include "Debug.hpp"
+#include "../include/DataExtractor.hpp"
+#include "../include/Debug.hpp"
 #include <iostream>
 #include <sstream>
 
